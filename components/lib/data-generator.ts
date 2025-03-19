@@ -9,6 +9,7 @@ export interface VitalData {
   longitudeDegrees: number
   GPStime: string
   GPSdate: string
+  timestamp: Date
 }
 
 export function generateVitalData(prevData: VitalData): VitalData {
@@ -32,5 +33,6 @@ export function generateVitalData(prevData: VitalData): VitalData {
     longitudeDegrees: prevData.longitudeDegrees + (Math.random() - 0.5) * 0.0001,
     GPStime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
     GPSdate: new Date().toLocaleDateString(),
+    timestamp: new Date()
   }
 } 

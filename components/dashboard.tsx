@@ -63,23 +63,26 @@ export default function Dashboard() {
 
     // Set up interval for live data updates
     const interval = setInterval(() => {
-      setData(generateVitalData(data))
-
-      const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-
-      setHeartRateHistory((prev) => [...prev.slice(-19), { value: Math.floor(Math.random() * 20) + 65, time: timeString }])
-      setTempHistory((prev) => [
-        ...prev.slice(-19),
-        {
-          internal: data.internalTemp,
-          external: data.externalTemp,
-          time: timeString,
-        },
-      ])
+      setData(prevData => {
+        const newData = generateVitalData(prevData)
+        const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        
+        setHeartRateHistory(prev => [...prev.slice(-19), { value: Math.floor(Math.random() * 20) + 65, time: timeString }])
+        setTempHistory(prev => [
+          ...prev.slice(-19),
+          {
+            internal: newData.internalTemp,
+            external: newData.externalTemp,
+            time: timeString,
+          },
+        ])
+        
+        return newData
+      })
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [data])
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
