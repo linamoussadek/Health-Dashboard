@@ -1,4 +1,12 @@
-export function generateVitalData(previousData: any) {
+interface VitalData {
+  heartRate: number
+  internalTemp: number
+  externalTemp: number
+  motion: number
+  altitude: number
+}
+
+export function generateVitalData(previousData: VitalData) {
   // Create small random variations
   const heartRateChange = Math.random() * 6 - 3 // -3 to +3 BPM
   const internalTempChange = (Math.random() * 0.4 - 0.2) / 10 // -0.02 to +0.02 °C
