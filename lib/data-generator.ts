@@ -4,6 +4,8 @@ interface VitalData {
   externalTemp: number
   motion: number
   altitude: number
+  timestamp: Date
+  healthStatus: string
 }
 
 export function generateVitalData(previousData: VitalData) {
