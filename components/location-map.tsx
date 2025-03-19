@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
@@ -14,6 +15,16 @@ const icon = L.divIcon({
   popupAnchor: [0, -8],
 })
 
+// Dynamically import the map component with no SSR
+const MapComponent = dynamic(() => import("./map-component"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-zinc-900">
+      <div className="text-zinc-400">Chargement de la carte...</div>
+    </div>
+  ),
+})
+
 interface LocationMapProps {
   latitude: number
   longitude: number
@@ -21,37 +32,5 @@ interface LocationMapProps {
 }
 
 export function LocationMap({ latitude, longitude, altitude }: LocationMapProps) {
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  if (!isMounted) {
-    return null
-  }
-
-  return (
-    <div className="h-[300px] w-full rounded-lg overflow-hidden border border-gray-800">
-      <MapContainer
-        center={[latitude, longitude]}
-        zoom={13}
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={[latitude, longitude]} icon={icon}>
-          <Popup>
-            <div className="text-sm space-y-1">
-              <p className="font-medium">Altitude: {altitude}m</p>
-              <p>Lat: {latitude.toFixed(6)}° N</p>
-              <p>Lon: {longitude.toFixed(6)}° E</p>
-            </div>
-          </Popup>
-        </Marker>
-      </MapContainer>
-    </div>
-  )
+  return <MapComponent latitude={latitude} longitude={longitude} altitude={altitude} />
 } 
