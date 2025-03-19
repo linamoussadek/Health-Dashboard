@@ -6,6 +6,13 @@ interface VitalData {
   altitude: number
   timestamp: Date
   healthStatus: string
+  humidity: number
+  movement: boolean
+  speed: number
+  latitudeDegrees: number
+  longitudeDegrees: number
+  GPSdate: string
+  GPStime: string
 }
 
 export function generateVitalData(previousData: VitalData) {
@@ -15,6 +22,8 @@ export function generateVitalData(previousData: VitalData) {
   const externalTempChange = (Math.random() * 0.6 - 0.3) / 10 // -0.03 to +0.03 °C
   const motionChange = (Math.random() * 0.4 - 0.2) / 10 // -0.02 to +0.02 units
   const altitudeChange = Math.random() > 0.7 ? Math.floor(Math.random() * 10) - 5 : 0 // Occasional -5 to +5m change
+  const humidityChange = (Math.random() * 0.4 - 0.2) / 10 // -0.02 to +0.02 units
+  const speedChange = (Math.random() * 0.4 - 0.2) / 10 // -0.02 to +0.02 km/h
 
   // Calculate new values
   let newHeartRate = previousData.heartRate + heartRateChange
@@ -22,6 +31,8 @@ export function generateVitalData(previousData: VitalData) {
   let newExternalTemp = previousData.externalTemp + externalTempChange
   let newMotion = previousData.motion + motionChange
   let newAltitude = previousData.altitude + altitudeChange
+  let newHumidity = previousData.humidity + humidityChange
+  let newSpeed = previousData.speed + speedChange
 
   // Add occasional spikes for realism
   if (Math.random() > 0.9) {
@@ -40,6 +51,8 @@ export function generateVitalData(previousData: VitalData) {
   newExternalTemp = Math.max(-20, Math.min(5, newExternalTemp))
   newMotion = Math.max(0, Math.min(1, newMotion))
   newAltitude = Math.max(0, newAltitude)
+  newHumidity = Math.max(0, Math.min(100, newHumidity))
+  newSpeed = Math.max(0, Math.min(10, newSpeed))
 
   // Determine health status based on vital signs
   let healthStatus = "normal"
@@ -64,6 +77,13 @@ export function generateVitalData(previousData: VitalData) {
     altitude: newAltitude,
     timestamp: new Date(),
     healthStatus,
+    humidity: newHumidity,
+    movement: newMotion > 0.1,
+    speed: newSpeed,
+    latitudeDegrees: previousData.latitudeDegrees,
+    longitudeDegrees: previousData.longitudeDegrees,
+    GPSdate: new Date().toLocaleDateString(),
+    GPStime: new Date().toLocaleTimeString(),
   }
 }
 

@@ -10,6 +10,7 @@ import { MotionIndicator } from "./motion-indicator"
 import { HeartRateChart } from "./heart-rate-chart"
 import { TemperatureGauge } from "./temperature-gauge"
 import { LocationMap } from "./location-map"
+import { HealthStatus } from "./health-status"
 
 export default function Dashboard() {
   const [data, setData] = useState<VitalData>({
@@ -31,19 +32,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Initialize with initial data
-    const initialData = generateVitalData({
-      externalTemp: -5.2,
+    const initialData = {
+      heartRate: 75,
       internalTemp: 37.0,
+      externalTemp: -5.0,
+      motion: 0.5,
+      altitude: 2850,
+      timestamp: new Date(),
+      healthStatus: "normal",
       humidity: 45,
       movement: true,
-      timestamp: new Date(),
+      speed: 2.5,
+      latitudeDegrees: 47.5622,
+      longitudeDegrees: 13.6493,
       GPSdate: new Date().toLocaleDateString(),
       GPStime: new Date().toLocaleTimeString(),
-      speed: 2.5,
-      altitude: 2850,
-      longitudeDegrees: 13.6493,
-      latitudeDegrees: 47.5622,
-    })
+    }
     setData(initialData)
 
     // Initialize with some historical data
@@ -271,6 +275,24 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-full border-zinc-800 bg-zinc-950/50 shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div className="space-y-1">
+                <CardTitle className="text-xl text-zinc-100">État de Santé</CardTitle>
+                <CardDescription className="text-base text-zinc-400">État de santé et données de santé</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <HealthStatus
+                heartRate={data.heartRate}
+                internalTemp={data.internalTemp}
+                externalTemp={data.externalTemp}
+                humidity={data.humidity}
+                altitude={data.altitude}
+              />
             </CardContent>
           </Card>
         </div>
