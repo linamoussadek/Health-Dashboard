@@ -1,4 +1,4 @@
-interface VitalData {
+export interface VitalData {
   heartRate: number
   internalTemp: number
   externalTemp: number

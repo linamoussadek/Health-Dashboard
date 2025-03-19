@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Mountain, Activity, AlertTriangle, Thermometer, Droplets, MapPin, AlertCircle, Zap } from "lucide-react"
-import { generateVitalData, type VitalData } from "./lib/data-generator"
+import { generateVitalData, type VitalData } from "@/lib/data-generator"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MotionIndicator } from "./motion-indicator"
@@ -14,17 +14,20 @@ import { HealthStatus } from "./health-status"
 
 export default function Dashboard() {
   const [data, setData] = useState<VitalData>({
-    externalTemp: 0,
-    internalTemp: 0,
-    humidity: 0,
-    movement: false,
+    heartRate: 75,
+    internalTemp: 37.0,
+    externalTemp: -5.0,
+    motion: 0.5,
+    altitude: 2850,
     timestamp: new Date(),
-    GPSdate: "",
-    GPStime: "",
-    speed: 0,
-    altitude: 0,
-    longitudeDegrees: 0,
-    latitudeDegrees: 0,
+    healthStatus: "normal",
+    humidity: 45,
+    movement: true,
+    speed: 2.5,
+    latitudeDegrees: 47.5622,
+    longitudeDegrees: 13.6493,
+    GPSdate: new Date().toLocaleDateString(),
+    GPStime: new Date().toLocaleTimeString(),
   })
 
   const [heartRateHistory, setHeartRateHistory] = useState<{ value: number; time: string }[]>([])
