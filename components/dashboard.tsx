@@ -1,3 +1,4 @@
+// Dashboard component - Main view for health monitoring
 "use client"
 
 import { useEffect, useState } from "react"
