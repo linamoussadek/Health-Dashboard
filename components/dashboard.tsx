@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mountain, Activity, AlertTriangle, Thermometer, Droplets, MapPin, AlertCircle, Zap } from "lucide-react"
+import { Mountain, Activity, Thermometer, Droplets, MapPin, AlertCircle, Zap } from "lucide-react"
 import { generateVitalData, type VitalData } from "@/lib/data-generator"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { MotionIndicator } from "./motion-indicator"
-import { HeartRateChart } from "./heart-rate-chart"
 import { TemperatureGauge } from "./temperature-gauge"
 import { LocationMap } from "./location-map"
-import { HealthStatus } from "./health-status"
+import { MotionIndicator } from "./motion-indicator"
+import { HeartRateChart } from "./heart-rate-chart"
 
 export default function Dashboard() {
   const [data, setData] = useState<VitalData>({
