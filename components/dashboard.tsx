@@ -35,10 +35,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Initialize with initial data
-    const initialData = {
+    const initialData = generateVitalData({
       heartRate: 75,
       internalTemp: 37.0,
-      externalTemp: -5.0,
+      externalTemp: -5.2,
       motion: 0.5,
       altitude: 2850,
       timestamp: new Date(),
@@ -50,7 +50,7 @@ export default function Dashboard() {
       longitudeDegrees: 13.6493,
       GPSdate: new Date().toLocaleDateString(),
       GPStime: new Date().toLocaleTimeString(),
-    }
+    })
     setData(initialData)
 
     // Initialize with some historical data
