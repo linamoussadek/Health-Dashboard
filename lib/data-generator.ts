@@ -1,4 +1,4 @@
-export interface VitalData {
+export type VitalData = {
   heartRate: number
   internalTemp: number
   externalTemp: number
@@ -13,6 +13,8 @@ export interface VitalData {
   longitudeDegrees: number
   GPSdate: string
   GPStime: string
+  gravityScore: number
+  immobileTime: number
 }
 
 export function generateVitalData(previousData: VitalData) {
