@@ -100,14 +100,10 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-zinc-100">Moniteur de Santé Alpine</h1>
           </div>
           <div className="absolute right-6 flex items-center gap-6">
-            <Badge variant="outline" className="gap-1 border-zinc-800 px-4 py-1.5 bg-zinc-950/50 text-base">
+            <Badge variant="outline" className="gap-1 border-zinc-800 px-4 py-1.5 bg-zinc-950/50 text-base text-white">
               <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
               Données en Direct
             </Badge>
-            <Button variant="outline" size="lg" className="border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900 text-base">
-              <AlertTriangle className="mr-2 h-5 w-5" />
-              Urgence
-            </Button>
           </div>
         </div>
       </header>
@@ -278,24 +274,6 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-full border-zinc-800 bg-zinc-950/50 shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div className="space-y-1">
-                <CardTitle className="text-xl text-zinc-100">État de Santé</CardTitle>
-                <CardDescription className="text-base text-zinc-400">État de santé et données de santé</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <HealthStatus
-                heartRate={data.heartRate}
-                internalTemp={data.internalTemp}
-                externalTemp={data.externalTemp}
-                humidity={data.humidity}
-                altitude={data.altitude}
-              />
             </CardContent>
           </Card>
         </div>

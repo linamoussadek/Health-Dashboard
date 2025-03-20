@@ -25,7 +25,7 @@ export function MotionIndicator({ active, speed }: MotionIndicatorProps) {
       </div>
       <div className="mt-6 text-center">
         <div className="text-3xl font-bold text-zinc-100">{speed.toFixed(1)} km/h</div>
-        <div className="text-sm text-gray-300 mt-1">{active ? "In Motion" : "Stationary"}</div>
+        <div className="text-sm text-gray-300 mt-1">{active ? "En mouvement" : "Immobile"}</div>
       </div>
     </div>
   )
