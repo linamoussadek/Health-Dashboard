@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Activity, Thermometer, Droplets, Mountain } from "lucide-react"
+import { Activity, Thermometer, Droplets } from "lucide-react"
 
 interface HealthStatusProps {
   heartRate: number
@@ -28,7 +28,14 @@ export function HealthStatus({
         <CardDescription className="text-lg text-zinc-400">Signes vitaux et données environnementales en temps réel</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-400">Score de gravité</div>
+              <div className="text-sm font-medium text-zinc-100">{gravityScore}%</div>
+            </div>
+            <Progress value={gravityScore} className="h-3 bg-zinc-800" />
+          </div>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-rose-400" />
@@ -57,16 +64,6 @@ export function HealthStatus({
             </div>
             <div className="text-3xl font-bold text-zinc-100">{humidity.toFixed(1)}%</div>
           </div>
-        </div>
-        <div className="mt-8 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Mountain className="h-5 w-5 text-violet-400" />
-              <span className="text-base text-zinc-400">Score d&apos;Altitude</span>
-            </div>
-            <span className="text-base font-medium text-zinc-100">{gravityScore}%</span>
-          </div>
-          <Progress value={gravityScore} className="h-3 bg-zinc-800" />
         </div>
       </CardContent>
     </Card>
