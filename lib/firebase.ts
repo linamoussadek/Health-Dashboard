@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  databaseURL: "https://alpisafe-ce734-default-rtdb.firebaseio.com/",
+  databaseURL: "https://alpisafe2-default-rtdb.firebaseio.com/",
   // Add other Firebase config options if needed
 };
 

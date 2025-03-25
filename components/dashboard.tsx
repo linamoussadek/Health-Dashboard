@@ -3,8 +3,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mountain, Activity, Thermometer, MapPin, Zap, Code } from "lucide-react"
-import { type VitalData } from "@/lib/data-generator"
+import { Mountain, Activity, Thermometer, MapPin, Zap, Code, AlertCircle, AlertTriangle, AlertOctagon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { TemperatureGauge } from "@/components/temperature-gauge"
 import { LocationMap } from "@/components/location-map"
@@ -15,7 +14,60 @@ import { LineChart, CartesianGrid, XAxis, YAxis, Tooltip, ReferenceLine, Line, R
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, AlertTriangle, AlertOctagon } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/components/ui/use-toast"
+import { AlertModal } from "@/components/alert-modal"
+import { AlertCard } from "@/components/alert-card"
+
+interface Reading {
+  ButtonState: string;
+  BPM: string;
+  InternalTemperature: string;
+  ExternalTemperature: string;
+  altitude: string;
+  humidity: string;
+  latitudeDegrees: string;
+  longitudeDegrees: string;
+  movement: string;
+  speed: string;
+  timestamp: string;
+  EtatDeLalpiniste: string;
+  ScoreDeGravite: string;
+  tempsDimmobilite: string;
+  GPSdate: string;
+  GPStime: string;
+}
+
+interface DashboardData {
+  heartRate: number;
+  internalTemp: number;
+  externalTemp: number;
+  altitude: number;
+  humidity: number;
+  latitudeDegrees: number;
+  longitudeDegrees: number;
+  movement: boolean;
+  speed: number;
+  timestamp: Date;
+  healthStatus: string;
+  gravityScore: number;
+  immobileTime: number;
+  GPSdate: string;
+  GPStime: string;
+  EtatDeLalpiniste: string;
+}
+
+interface HeartRateData {
+  value: number;
+  time: string;
+}
+
+interface TemperatureData {
+  internal: number;
+  external: number;
+  time: string;
+}
 
 // Health status calculation functions
 function scoreFrequenceCardiaqueTempTS(Tc: number, FC: number): number {
@@ -75,7 +127,7 @@ function evaluerNiveauGraviteTS(SG: number): string {
   return "ALERTE CRITIQUE : Envoi SOS automatique";
 }
 
-function determinerEtatSante(Tc: number, FC: number, Te: number, immobile: number): string {
+function determinerEtatSante(Tc: number, FC: number, Te: number, immobile: number, movement: boolean): string {
   // Situations d'urgence vitale immédiate (priorité absolue)
   if (Tc <= 24) {
     if (FC < 40) return "Hypothermie profonde avec bradycardie sévère - Arrêt cardiaque imminent";
@@ -151,7 +203,7 @@ function determinerEtatSante(Tc: number, FC: number, Te: number, immobile: numbe
   if (conditions.length === 0 && 
       Tc > 35 && Tc < 38.5 && 
       FC >= 50 && FC <= 150 && 
-      (immobile <= 15 || data.movement)) {
+      (immobile <= 15 || movement)) {
     return "État physiologique stable";
   }
 
@@ -164,37 +216,43 @@ function determinerEtatSante(Tc: number, FC: number, Te: number, immobile: numbe
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<VitalData>({
-    heartRate: 75,
-    internalTemp: 37.0,
-    externalTemp: -5.0,
-    motion: 0.5,
-    altitude: 2850,
+  const { toast } = useToast()
+  const [data, setData] = useState<DashboardData>({
+    heartRate: 0,
+    internalTemp: 0,
+    externalTemp: 0,
+    altitude: 0,
+    humidity: 0,
+    latitudeDegrees: 0,
+    longitudeDegrees: 0,
+    movement: false,
+    speed: 0,
     timestamp: new Date(),
     healthStatus: "normal",
-    humidity: 45,
-    movement: true,
-    speed: 2.5,
-    latitudeDegrees: 47.5622,
-    longitudeDegrees: 13.6493,
+    gravityScore: 0,
+    immobileTime: 0,
     GPSdate: "",
     GPStime: "",
-    gravityScore: 0,
-    immobileTime: 0,  // Add this new field
+    EtatDeLalpiniste: "Situation normale"
   })
 
   const [heartRateHistory, setHeartRateHistory] = useState<{ value: number; time: string }[]>([])
   const [tempHistory, setTempHistory] = useState<{ internal: number; external: number; time: string }[]>([])
   const [showRawData, setShowRawData] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
-  const [alertType, setAlertType] = useState<string>("")
+  const [alertType, setAlertType] = useState<"pre" | "serious" | "critical" | null>(null)
   const previousAlertType = useRef<string>("")
+  const [previousButtonState, setPreviousButtonState] = useState<string>("0")
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; type: "pre" | "serious" | "critical" }>({
+    isOpen: false,
+    type: "pre",
+  })
 
   // Function to handle alerts based on risk level
   const handleRiskLevel = (riskLevel: string) => {
     if (riskLevel !== previousAlertType.current) {
       setShowAlert(true)
-      setAlertType(riskLevel)
+      setAlertType(riskLevel as "pre" | "serious" | "critical" | null)
       previousAlertType.current = riskLevel
     }
   }
@@ -229,50 +287,80 @@ export default function Dashboard() {
 
   useEffect(() => {
     console.log("Setting up Firebase connection...")
-    // Reference to your Firebase data path
-    const dataRef = ref(database, '/UsersData/xAG0EpRU4ZPNCvMU8awkfLQMip83/readings')
-    console.log("Firebase reference created:", dataRef)
+    const readingsRef = ref(database, 'UsersData/UWSJMXimYdNU9QiUS0KN90Uel7g2/readings')
+    console.log("Firebase reference created:", readingsRef)
+    
+    const unsubscribe = onValue(readingsRef, (snapshot) => {
+      console.log('Received data from Firebase:', snapshot.val())
+      const firebaseData = snapshot.val()
+      
+      if (firebaseData) {
+        // Get the latest reading by finding the most recent timestamp
+        const readings = Object.entries(firebaseData).map(([key, value]) => ({
+          timestamp: key,
+          ...value as Reading
+        }))
+        const latest = readings.reduce((latest, current) => {
+          return parseInt(current.timestamp) > parseInt(latest.timestamp) ? current : latest
+        }, readings[0])
 
-    // Set up real-time listener
-    onValue(dataRef, (snapshot) => {
-      console.log("Received data from Firebase:", snapshot.val())
-      const readings = snapshot.val()
-      if (readings) {
-        console.log("Processing readings:", readings)
-        // Get the latest reading (last timestamp)
-        const timestamps = Object.keys(readings)
-        console.log("Available timestamps:", timestamps)
-        const latestTimestamp = timestamps[timestamps.length - 1]
-        console.log("Latest timestamp:", latestTimestamp)
-        const latestReading = readings[latestTimestamp]
-        console.log("Latest reading:", latestReading)
+        console.log('Latest reading:', latest)
 
-        // Handle risk level alerts
-        handleRiskLevel(latestReading.EtatDeLalpiniste)
-
-        // Convert string values to numbers and update the data state
-        setData(currentData => {
-          const newData = {
-            ...currentData,
-            heartRate: parseFloat(latestReading.BPM) || currentData.heartRate,
-            internalTemp: parseFloat(latestReading.InternalTemperature),
-            externalTemp: parseFloat(latestReading.ExternalTemperature),
-            altitude: parseFloat(latestReading.altitude),
-            humidity: parseFloat(latestReading.humidity),
-            latitudeDegrees: parseFloat(latestReading.latitudeDegrees),
-            longitudeDegrees: parseFloat(latestReading.longitudeDegrees),
-            movement: latestReading.movement === "1",
-            speed: parseFloat(latestReading.speed),
-            timestamp: new Date(parseInt(latestReading.timestamp) * 1000),
-            healthStatus: latestReading.EtatDeLalpiniste || "normal",
-            gravityScore: parseFloat(latestReading.ScoreDeGravite) || 0
+        // Check for button press cycle (0->1->0)
+        const currentButtonState = latest.ButtonState
+        if (currentButtonState === "0" && previousButtonState === "1") {
+          // Button was just released (completed the cycle)
+          if (alertType !== "critical") {
+            setAlertType(null)
           }
-          console.log("Updated state data:", newData)
-          return newData
-        })
+        }
+        setPreviousButtonState(currentButtonState)
+
+        // Check gravity score for alerts
+        const gravityScore = parseFloat(latest.ScoreDeGravite)
+        const buttonState = latest.ButtonState === "1"
+
+        // Only show new alert if button state is 0 (not acknowledged) and no current alert
+        if (!buttonState && !alertType) {
+          if (gravityScore >= 0.8) {
+            setAlertType("critical")
+            console.log("SOS signal sent automatically")
+          } else if (gravityScore >= 0.6) {
+            setAlertType("serious")
+          } else if (gravityScore >= 0.3) {
+            setAlertType("pre")
+          }
+        }
+
+        // Update dashboard with latest reading
+        setData(currentData => ({
+          ...currentData,
+          heartRate: parseFloat(latest.BPM) || 0,
+          internalTemp: parseFloat(latest.InternalTemperature),
+          externalTemp: parseFloat(latest.ExternalTemperature),
+          altitude: parseFloat(latest.altitude),
+          humidity: parseFloat(latest.humidity),
+          latitudeDegrees: parseFloat(latest.latitudeDegrees),
+          longitudeDegrees: parseFloat(latest.longitudeDegrees),
+          movement: latest.movement === "1",
+          speed: parseFloat(latest.speed),
+          timestamp: new Date(parseInt(latest.timestamp) * 1000),
+          healthStatus: determinerEtatSante(
+            parseFloat(latest.InternalTemperature),
+            parseFloat(latest.BPM),
+            parseFloat(latest.ExternalTemperature),
+            parseFloat(latest.tempsDimmobilite) || 0,
+            latest.movement === "1"
+          ),
+          gravityScore: parseFloat(latest.ScoreDeGravite) || 0,
+          immobileTime: parseFloat(latest.tempsDimmobilite) || 0,
+          GPSdate: latest.GPSdate || "",
+          GPStime: latest.GPStime || "",
+          EtatDeLalpiniste: latest.EtatDeLalpiniste || "Situation normale"
+        }))
 
         // Update history with consistent time format
-        const timeString = new Date(parseInt(latestReading.timestamp) * 1000).toLocaleTimeString('en-US', { 
+        const timeString = new Date(parseInt(latest.timestamp) * 1000).toLocaleTimeString('en-US', { 
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
@@ -280,15 +368,15 @@ export default function Dashboard() {
         })
         
         setHeartRateHistory(prev => [...prev.slice(-19), { 
-          value: parseFloat(latestReading.BPM) || data.heartRate, 
+          value: parseFloat(latest.BPM), 
           time: timeString 
         }])
         
         setTempHistory(prev => [
           ...prev.slice(-19),
           {
-            internal: parseFloat(latestReading.InternalTemperature),
-            external: parseFloat(latestReading.ExternalTemperature),
+            internal: parseFloat(latest.InternalTemperature),
+            external: parseFloat(latest.ExternalTemperature),
             time: timeString,
           },
         ])
@@ -296,122 +384,32 @@ export default function Dashboard() {
         console.log("No readings found in the snapshot")
       }
     }, (error) => {
-      console.error("Error connecting to Firebase:", error)
+      console.error("Error fetching data:", error)
     })
 
-    // Cleanup subscription on unmount
     return () => {
       console.log("Cleaning up Firebase connection")
-      off(dataRef)
+      unsubscribe()
     }
-  }, [])
+  }, [alertType, previousButtonState])
 
-  // Test function to simulate different states
+  // Remove the test data simulation since we're using real Firebase data
   useEffect(() => {
-    if (!database) {
-      // Simulate data updates when not connected to Firebase
-      const states = [
-        {
-          // Situation 1: Hypothermie modérée avec début de bradycardie
-          EtatDeLalpiniste: "Risque modere",
-          BPM: "58",
-          InternalTemperature: "35.2",
-          ExternalTemperature: "-12.0",
-          altitude: "3200",
-          humidity: "65",
-          latitudeDegrees: "45.5",
-          longitudeDegrees: "6.5",
-          movement: "1",
-          speed: "1.5",
-          timestamp: (Date.now() / 1000).toString(),
-          GPSdate: "",
-          GPStime: "",
-          ScoreDeGravite: "0.5"
-        },
-        {
-          // Situation 2: Hypothermie sévère avec bradycardie et immobilité
-          EtatDeLalpiniste: "Alerte serieuse: Confirmation Requise",
-          BPM: "45",
-          InternalTemperature: "31.5",
-          ExternalTemperature: "-15.0",
-          altitude: "3500",
-          humidity: "75",
-          latitudeDegrees: "45.5",
-          longitudeDegrees: "6.5",
-          movement: "0",
-          speed: "0",
-          timestamp: (Date.now() / 1000).toString(),
-          GPSdate: "",
-          GPStime: "",
-          ScoreDeGravite: "0.75"
-        },
-        {
-          // Situation 3: Hypothermie critique avec bradycardie sévère
-          EtatDeLalpiniste: "Alerte critique: SOS Automatique",
-          BPM: "38",
-          InternalTemperature: "29.5",
-          ExternalTemperature: "-18.0",
-          altitude: "3800",
-          humidity: "80",
-          latitudeDegrees: "45.5",
-          longitudeDegrees: "6.5",
-          movement: "0",
-          speed: "0",
-          timestamp: (Date.now() / 1000).toString(),
-          GPSdate: "",
-          GPStime: "",
-          ScoreDeGravite: "1.0"
-        }
-      ];
-
-      let currentIndex = 0;
-      const interval = setInterval(() => {
-        const reading = states[currentIndex];
-        handleRiskLevel(reading.EtatDeLalpiniste);
-        
-        setData(currentData => ({
-          ...currentData,
-          heartRate: parseFloat(reading.BPM),
-          internalTemp: parseFloat(reading.InternalTemperature),
-          externalTemp: parseFloat(reading.ExternalTemperature),
-          altitude: parseFloat(reading.altitude),
-          humidity: parseFloat(reading.humidity),
-          latitudeDegrees: parseFloat(reading.latitudeDegrees),
-          longitudeDegrees: parseFloat(reading.longitudeDegrees),
-          movement: reading.movement === "1",
-          speed: parseFloat(reading.speed),
-          timestamp: new Date(parseInt(reading.timestamp) * 1000),
-          healthStatus: reading.EtatDeLalpiniste,
-          gravityScore: parseFloat(reading.ScoreDeGravite)
-        }));
-
-        currentIndex = (currentIndex + 1) % states.length;
-      }, 5000);
-
-      return () => clearInterval(interval);
-    }
-  }, []);
-
-  // Add immobility timer
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
     if (!data.movement) {
-      timer = setInterval(() => {
+      const timer = setInterval(() => {
         setData(prev => ({
           ...prev,
           immobileTime: prev.immobileTime + 1
-        }));
-      }, 1000);
+        }))
+      }, 1000)
+      return () => clearInterval(timer)
     } else {
       setData(prev => ({
         ...prev,
         immobileTime: 0
-      }));
+      }))
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [data.movement]);
+  }, [data.movement])
 
   // Update the health status calculation
   useEffect(() => {
@@ -428,7 +426,8 @@ export default function Dashboard() {
       data.internalTemp,
       data.heartRate,
       data.externalTemp,
-      data.immobileTime / 60
+      data.immobileTime / 60,
+      data.movement
     );
     
     if (conditionMedicale !== data.healthStatus) {
@@ -439,67 +438,14 @@ export default function Dashboard() {
     }
   }, [data.internalTemp, data.heartRate, data.movement, data.immobileTime, data.externalTemp]);
 
-  // Alert component based on risk level
-  const renderAlert = () => {
-    if (!showAlert) return null
-
-    let alertProps = {
-      variant: "default" as const,
-      icon: AlertCircle,
-      title: "",
-      description: "",
-      className: ""
-    }
-
-    switch (alertType) {
-      case "Risque modere":
-        alertProps = {
-          variant: "default",
-          icon: AlertCircle,
-          title: "Risque modéré",
-          description: "Pré-alerte : Une attention particulière est requise",
-          className: "bg-yellow-500/20 border-yellow-500 text-yellow-500"
-        }
-        break
-      case "Alerte serieuse: Confirmation Requise":
-        alertProps = {
-          variant: "default",
-          icon: AlertTriangle,
-          title: "Alerte sérieuse",
-          description: "Confirmation requise : Veuillez vérifier l'état de l'alpiniste",
-          className: "bg-orange-500/20 border-orange-500 text-orange-500"
-        }
-        break
-      case "Alerte critique: SOS Automatique":
-        alertProps = {
-          variant: "default",
-          icon: AlertOctagon,
-          title: "Alerte critique",
-          description: "SOS automatique envoyé ! Intervention immédiate requise",
-          className: "bg-red-500/20 border-red-500 text-red-500"
-        }
-        break
-      default:
-        return null
-    }
-
-    const AlertIcon = alertProps.icon
-
-    return (
-      <Alert 
-        variant={alertProps.variant}
-        className={`fixed top-24 right-4 w-96 z-50 animate-in slide-in-from-right duration-300 ${alertProps.className}`}
-      >
-        <AlertIcon className="h-5 w-5" />
-        <AlertTitle className="text-lg font-semibold">{alertProps.title}</AlertTitle>
-        <AlertDescription className="text-sm mt-1">{alertProps.description}</AlertDescription>
-      </Alert>
-    )
-  }
-
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 relative overflow-x-hidden">
-      {renderAlert()}
+      <Toaster />
+      <AlertModal 
+        isOpen={alertModal.isOpen}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ isOpen: false, type: "pre" })}
+      />
       <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm w-full">
         <div className="container flex h-20 items-center justify-between px-6 max-w-[1800px] mx-auto">
           <div className="flex items-center gap-6">
@@ -547,75 +493,149 @@ export default function Dashboard() {
             <Card className="col-span-full border-zinc-800 bg-zinc-950/50 shadow-xl">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <h1 className="text-2xl font-bold text-zinc-100">État de Santé</h1>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm text-zinc-400">En ligne</span>
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-zinc-100">État de Santé</h1>
+                    <CardDescription className="text-lg text-zinc-400">Condition médicale actuelle</CardDescription>
+
+                    <div className="mt-2 mb-1">
+                      <div className="text-3xl font-bold text-zinc-100">
+                        {(() => {
+                          const status = data.healthStatus.toLowerCase();
+                          
+                          // Urgences vitales - Rouge vif
+                          if (status.includes("arrêt cardiaque") || 
+                              status.includes("risque vital") ||
+                              status.includes("urgence vitale") ||
+                              status.includes("pronostic vital") ||
+                              status.includes("défaillance") ||
+                              status.includes("asystolie")) {
+                            return <span className="text-red-500">{data.healthStatus}</span>;
+                          }
+                          
+                          // Situations très graves - Rouge orangé
+                          if (status.includes("critique") ||
+                              status.includes("maligne") ||
+                              status.includes("collapsus") ||
+                              status.includes("risque de décès")) {
+                            return <span className="text-red-400">{data.healthStatus}</span>;
+                          }
+
+                          // Situations sévères - Orange
+                          if (status.includes("sévère") ||
+                              status.includes("profonde") ||
+                              status.includes("extrême")) {
+                            return <span className="text-orange-500">{data.healthStatus}</span>;
+                          }
+
+                          // Situations modérées avec risque - Jaune orangé
+                          if (status.includes("risque d'arythmie") ||
+                              status.includes("instabilité") ||
+                              status.includes("aggravation")) {
+                            return <span className="text-amber-500">{data.healthStatus}</span>;
+                          }
+
+                          // Situations modérées - Jaune
+                          if (status.includes("modérée") ||
+                              status.includes("compensatoire") ||
+                              status.includes("prolongée")) {
+                            return <span className="text-yellow-500">{data.healthStatus}</span>;
+                          }
+
+                          // Situations légères - Bleu clair
+                          if (status.includes("légère") ||
+                              status.includes("mineure") ||
+                              status.includes("préoccupante")) {
+                            return <span className="text-blue-400">{data.healthStatus}</span>;
+                          }
+
+                          // État stable - Vert
+                          if (status.includes("stable") ||
+                              status === "état physiologique stable") {
+                            return <span className="text-emerald-400">{data.healthStatus}</span>;
+                          }
+
+                          // État par défaut ou indéterminé - Gris
+                          return <span className="text-zinc-400">{data.healthStatus}</span>;
+                        })()}
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <CardDescription className="text-lg text-zinc-400">Condition médicale actuelle</CardDescription>
+                  {/* Alert Status Integration */}
+                  <div className="w-[300px] border-l border-zinc-800 pl-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xl font-semibold text-zinc-100">État d&apos;Alerte</span>
+                      {data.EtatDeLalpiniste === "Situation normale" ? (
+                        <Activity className="h-6 w-6 text-emerald-400" />
+                      ) : data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? (
+                        <AlertTriangle className="h-6 w-6 text-blue-400 animate-pulse" />
+                      ) : data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? (
+                        <AlertOctagon className="h-6 w-6 text-orange-400 animate-pulse" />
+                      ) : data.EtatDeLalpiniste === "Alerte critique" ? (
+                        <AlertCircle className="h-6 w-6 text-red-400 animate-pulse" />
+                      ) : (
+                        <AlertTriangle className="h-6 w-6 text-zinc-400" />
+                      )}
+                    </div>
+                    
+                    <div className={`text-2xl font-bold mb-2 ${
+                      data.EtatDeLalpiniste === "Situation normale" ? "text-emerald-400" :
+                      data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "text-blue-400" :
+                      data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "text-orange-400" :
+                      data.EtatDeLalpiniste === "Alerte critique" ? "text-red-400" :
+                      "text-zinc-400"
+                    }`}>
+                      {data.EtatDeLalpiniste === "Situation normale" ? "Situation Normale" :
+                       data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "Pré-Alerte" :
+                       data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "Alerte Sérieuse" :
+                       data.EtatDeLalpiniste === "Alerte critique" ? "ALERTE CRITIQUE" :
+                       "État Indéterminé"}
+                    </div>
+                    
+                    <div className={`p-3 rounded-lg mb-2 ${
+                      data.EtatDeLalpiniste === "Situation normale" ? "bg-emerald-500/20 border-2 border-emerald-500/30" :
+                      data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "bg-blue-500/20 border-2 border-blue-500/30" :
+                      data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "bg-orange-500/20 border-2 border-orange-500/30" :
+                      data.EtatDeLalpiniste === "Alerte critique" ? "bg-red-500/20 border-2 border-red-500/30" :
+                      "bg-zinc-800/50 border-2 border-zinc-700/30"
+                    }`}>
+                      <p className="text-sm text-zinc-100">
+                        {data.EtatDeLalpiniste === "Situation normale" ? 
+                          "Tous les paramètres sont normaux." :
+                         data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? 
+                          "Surveillance accrue recommandée. Vérifiez les paramètres." :
+                         data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? (
+                          <span>
+                            Confirmation requise ! Appuyez sur le bouton dans{' '}
+                            <span className="font-bold text-orange-400">
+                              {Math.max(0, 10 - Math.floor(data.immobileTime))} secondes
+                            </span>
+                          </span>
+                         ) :
+                         data.EtatDeLalpiniste === "Alerte critique" ? 
+                          "APPEL D'URGENCE EN COURS (911)" :
+                          "État du système non disponible"}
+                      </p>
+                    </div>
 
-                <div className="mt-2 mb-1">
-                  <div className="text-3xl font-bold text-zinc-100">
-                    {(() => {
-                      const status = data.healthStatus.toLowerCase();
-                      
-                      // Urgences vitales - Rouge vif
-                      if (status.includes("arrêt cardiaque") || 
-                          status.includes("risque vital") ||
-                          status.includes("urgence vitale") ||
-                          status.includes("pronostic vital") ||
-                          status.includes("défaillance") ||
-                          status.includes("asystolie")) {
-                        return <span className="text-red-500">{data.healthStatus}</span>;
-                      }
-                      
-                      // Situations très graves - Rouge orangé
-                      if (status.includes("critique") ||
-                          status.includes("maligne") ||
-                          status.includes("collapsus") ||
-                          status.includes("risque de décès")) {
-                        return <span className="text-red-400">{data.healthStatus}</span>;
-                      }
-
-                      // Situations sévères - Orange
-                      if (status.includes("sévère") ||
-                          status.includes("profonde") ||
-                          status.includes("extrême")) {
-                        return <span className="text-orange-500">{data.healthStatus}</span>;
-                      }
-
-                      // Situations modérées avec risque - Jaune orangé
-                      if (status.includes("risque d'arythmie") ||
-                          status.includes("instabilité") ||
-                          status.includes("aggravation")) {
-                        return <span className="text-amber-500">{data.healthStatus}</span>;
-                      }
-
-                      // Situations modérées - Jaune
-                      if (status.includes("modérée") ||
-                          status.includes("compensatoire") ||
-                          status.includes("prolongée")) {
-                        return <span className="text-yellow-500">{data.healthStatus}</span>;
-                      }
-
-                      // Situations légères - Bleu clair
-                      if (status.includes("légère") ||
-                          status.includes("mineure") ||
-                          status.includes("préoccupante")) {
-                        return <span className="text-blue-400">{data.healthStatus}</span>;
-                      }
-
-                      // État stable - Vert
-                      if (status.includes("stable") ||
-                          status === "état physiologique stable") {
-                        return <span className="text-emerald-400">{data.healthStatus}</span>;
-                      }
-
-                      // État par défaut ou indéterminé - Gris
-                      return <span className="text-zinc-400">{data.healthStatus}</span>;
-                    })()}
+                    <div className="h-2 w-full rounded-full bg-zinc-800">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          data.EtatDeLalpiniste === "Situation normale" ? "bg-emerald-500" :
+                          data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "bg-blue-500" :
+                          data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "bg-orange-500" :
+                          data.EtatDeLalpiniste === "Alerte critique" ? "bg-red-500" :
+                          "bg-zinc-600"
+                        }`}
+                        style={{
+                          width: data.EtatDeLalpiniste === "Alerte critique" ? "100%" :
+                                 data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "66%" :
+                                 data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "33%" :
+                                 data.EtatDeLalpiniste === "Situation normale" ? "0%" :
+                                 "0%"
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -658,7 +678,7 @@ export default function Dashboard() {
                       <div 
                         className="absolute top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-full transition-all duration-500"
                         style={{
-                          left: `${((data.heartRate - 60) / (100 - 60)) * 100}%`,
+                          left: `${Math.min(Math.max(((data.heartRate - 60) / (100 - 60)) * 100, 0), 100)}%`,
                         }}
                       />
                     </div>
