@@ -599,42 +599,34 @@ export default function Dashboard() {
                       data.EtatDeLalpiniste === "Alerte critique" ? "bg-red-500/20 border-2 border-red-500/30" :
                       "bg-zinc-800/50 border-2 border-zinc-700/30"
                     }`}>
-                      <p className="text-sm text-zinc-100">
-                        {data.EtatDeLalpiniste === "Situation normale" ? 
-                          "Tous les paramètres sont normaux." :
-                         data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? 
-                          "Surveillance accrue recommandée. Vérifiez les paramètres." :
-                         data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? (
-                          <span>
-                            Confirmation requise ! Appuyez sur le bouton dans{' '}
-                            <span className="font-bold text-orange-400">
-                              {Math.max(0, 10 - Math.floor(data.immobileTime))} secondes
-                            </span>
-                          </span>
-                         ) :
-                         data.EtatDeLalpiniste === "Alerte critique" ? 
-                          "APPEL D'URGENCE EN COURS (911)" :
-                          "État du système non disponible"}
-                      </p>
-                    </div>
-
-                    <div className="h-2 w-full rounded-full bg-zinc-800">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          data.EtatDeLalpiniste === "Situation normale" ? "bg-emerald-500" :
-                          data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "bg-blue-500" :
-                          data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "bg-orange-500" :
-                          data.EtatDeLalpiniste === "Alerte critique" ? "bg-red-500" :
-                          "bg-zinc-600"
-                        }`}
-                        style={{
-                          width: data.EtatDeLalpiniste === "Alerte critique" ? "100%" :
-                                 data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? "66%" :
-                                 data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? "33%" :
-                                 data.EtatDeLalpiniste === "Situation normale" ? "0%" :
-                                 "0%"
-                        }}
-                      />
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm text-zinc-100">
+                          {data.EtatDeLalpiniste === "Situation normale" ? 
+                            "Tous les paramètres sont normaux." :
+                           data.EtatDeLalpiniste === "Pre-alerte : Risque modere" ? 
+                            "Surveillance accrue recommandée." :
+                           data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" ? 
+                            "Appuyez sur le bouton d'urgence" :
+                           data.EtatDeLalpiniste === "Alerte critique" ? 
+                            "APPEL D'URGENCE EN COURS (911)" :
+                            "État du système non disponible"}
+                        </p>
+                        {data.EtatDeLalpiniste === "Alerte serieuse : Confirmation requise" && (
+                          <div className="flex items-center gap-2">
+                            <div className={`text-lg font-mono ${
+                              Math.max(0, 10 - Math.floor(data.immobileTime)) <= 3 ? "text-red-400 animate-pulse" : "text-orange-400"
+                            }`}>
+                              {Math.max(0, 10 - Math.floor(data.immobileTime))}s
+                            </div>
+                            <span className="text-xs text-zinc-400">avant l'alerte critique</span>
+                          </div>
+                        )}
+                        {data.EtatDeLalpiniste === "Alerte critique" && (
+                          <div className="text-sm font-semibold text-red-400 animate-pulse">
+                            SOS envoyé
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
